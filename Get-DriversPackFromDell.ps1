@@ -91,6 +91,9 @@ DynamicParam {
 
 
 BEGIN {
+	# Load testable helper functions (Test-PackageHash, Get-PackageFilterMatch, Test-NewerPackage)
+	. "$PSScriptRoot\DriversPack.Helpers.ps1"
+
 	# Check NoSymbolicLink parameter
 	if ($NoSymbolicLink) {
 		Write-Host 'Symbolic link creation is disabled' -ForegroundColor Yellow
@@ -154,20 +157,6 @@ PROCESS {
 		}
 
 		Write-Progress -Activity $Activity -Status $Status -PercentComplete $script:percentComplete
-	}
-
-
-	function Test-PackageHash {
-		[CmdletBinding()]
-		param (
-			[ValidateNotNullOrEmpty()]
-			[string]$FilePath = $package.path,
-			[ValidateNotNullOrEmpty()]
-			[string]$FileHash = $package.hash
-		)
-
-		$myFileHash = Get-FileHash -Algorithm MD5 -Path $FilePath -ErrorAction Stop | Select-Object -ExpandProperty Hash
-		return $myFileHash -eq $FileHash
 	}
 
 
@@ -349,7 +338,7 @@ PROCESS {
 		# Filter by models
 		if ($models -ne '*') {
 			Write-Host " - Filtering by models : $($package.models)... " -NoNewline
-			$modelsFound = Compare-Object -ReferenceObject $package.models -DifferenceObject $models -IncludeEqual -ExcludeDifferent | Where-Object { $_.SideIndicator -eq '==' } | Select-Object -ExpandProperty InputObject
+			$modelsFound = Get-PackageFilterMatch -PackageValues $package.models -FilterValues $models
 			if (!$modelsFound) {
 				$driversPacks = $driversPacks | Where-Object { $_.name -ne $package.name }
 				Write-Host 'NOT FOUND' -ForegroundColor Yellow
@@ -362,7 +351,7 @@ PROCESS {
 		# Filter by operating systems
 		if ($operatingSystems -ne '*') {
 			Write-Host " - Filtering by operating systems : $($package.operatingSystems)... " -NoNewline
-			$operatingSystemsFound = Compare-Object -ReferenceObject $package.operatingSystems -DifferenceObject $operatingSystems -IncludeEqual -ExcludeDifferent | Where-Object { $_.SideIndicator -eq '==' } | Select-Object -ExpandProperty InputObject
+			$operatingSystemsFound = Get-PackageFilterMatch -PackageValues $package.operatingSystems -FilterValues $operatingSystems
 			if (!$operatingSystemsFound) {
 				Write-Debug "Operating system not found : $($package.operatingSystems)"
 				$driversPacks = $driversPacks | Where-Object { $_.name -ne $package.name }
@@ -376,7 +365,7 @@ PROCESS {
 		# Filter by architectures
 		if ($architectures -ne '*') {
 			Write-Host " - Filtering by architectures : $($package.architectures)... " -NoNewline
-			$architecturesFound = Compare-Object -ReferenceObject $package.architectures -DifferenceObject $architectures -IncludeEqual -ExcludeDifferent | Where-Object { $_.SideIndicator -eq '==' } | Select-Object -ExpandProperty InputObject
+			$architecturesFound = Get-PackageFilterMatch -PackageValues $package.architectures -FilterValues $architectures
 			if (!$architecturesFound) {
 				Write-Debug "Architecture not found : $($package.architectures)"
 				$driversPacks = $driversPacks | Where-Object { $_.name -ne $package.name }
@@ -449,13 +438,12 @@ END {
 		foreach ($CurrentCAB in $LocalCABs) {
 
 			$Filter = $CurrentCAB.Split('-')[0] + '-' + $CurrentCAB.Split('-')[1] + '-*-*'
-			$currentCABVersion = [int]$CurrentCAB.Split('-')[2]
 
 			Get-Item $(Join-Path $DownloadFolder $Filter) -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name |
 			ForEach-Object {
 				$oldCabName = $_
 
-				if ($currentCABVersion -gt [int]$oldCabName.Split('-')[2]) {
+				if (Test-NewerPackage -CandidateName $CurrentCAB -ReferenceName $oldCabName) {
 					try {
 						Write-Host "Removing old package : $oldCabName"
 						Remove-Item -Path $(Join-Path $DownloadFolder $oldCabName) -Force -ErrorAction Stop | Out-Null
