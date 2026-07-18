@@ -14,7 +14,7 @@ jobs:
       - name: Install PSScriptAnalyzer and Pester modules
         shell: pwsh
         run: |
-          Get-PackageProvider | Where-Object Name -eq 'nuget' | Install-PackageProvider -Force
+          Install-PackageProvider -Name NuGet -Force -ErrorAction Stop
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
           Install-Module PSScriptAnalyzer -ErrorAction Stop
           Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -ErrorAction Stop
