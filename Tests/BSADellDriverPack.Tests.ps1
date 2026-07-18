@@ -1,5 +1,6 @@
 BeforeAll {
-	. "$PSScriptRoot\DriversPack.Helpers.ps1"
+	Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath '..' -AdditionalChildPath 'Private') -Filter '*.ps1' |
+		ForEach-Object { . $_.FullName }
 }
 
 Describe 'Test-PackageHash' {
@@ -58,5 +59,31 @@ Describe 'Test-NewerPackage' {
 
 	It 'returns true when the candidate version is strictly greater' {
 		Test-NewerPackage -CandidateName 'Latitude-7490-6-A00.CAB' -ReferenceName 'Latitude-7490-5-A00.CAB' | Should -BeTrue
+	}
+}
+
+Describe 'Test-ExistingPackage' {
+	BeforeAll {
+		$downloadFolder = Join-Path $TestDrive 'Drivers'
+		New-Item -Path $downloadFolder -ItemType Directory -Force | Out-Null
+
+		$packageContent = 'reference package content'
+		$referenceFile = Join-Path $downloadFolder 'Package-A.CAB'
+		Set-Content -Path $referenceFile -Value $packageContent -NoNewline
+		$packageHash = (Get-FileHash -Algorithm MD5 -Path $referenceFile).Hash
+
+		$package = [PSCustomObject]@{
+			name = 'Package-A.CAB'
+			hash = $packageHash
+		}
+	}
+
+	It 'returns false when no copy of the package exists yet' {
+		$missingPackage = [PSCustomObject]@{ name = 'Package-B.CAB'; hash = $packageHash }
+		Test-ExistingPackage -Package $missingPackage -DownloadFolder $downloadFolder -NoSymbolicLink | Should -BeFalse
+	}
+
+	It 'returns true when a valid copy already exists' {
+		Test-ExistingPackage -Package $package -DownloadFolder $downloadFolder -NoSymbolicLink | Should -BeTrue
 	}
 }

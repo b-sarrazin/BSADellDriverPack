@@ -1,0 +1,44 @@
+name: Publish PowerShell Module
+
+on:
+  release:
+    types: [created]
+
+  workflow_dispatch:
+
+jobs:
+  publish-to-gallery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PSScriptAnalyzer and Pester modules
+        shell: pwsh
+        run: |
+          Get-PackageProvider | Where-Object Name -eq 'nuget' | Install-PackageProvider -Force
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -ErrorAction Stop
+          Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -ErrorAction Stop
+      - name: Lint with PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Invoke-ScriptAnalyzer -Path .\Public, .\Private -Recurse -Outvariable issues
+          $errors   = $issues.Where({$_.Severity -eq 'Error'})
+          $warnings = $issues.Where({$_.Severity -eq 'Warning'})
+          if ($errors) {
+              Write-Error "There were $($errors.Count) errors and $($warnings.Count) warnings total." -ErrorAction Stop
+          } else {
+              Write-Output "There were $($errors.Count) errors and $($warnings.Count) warnings total."
+          }
+      - name: Run Pester tests
+        shell: pwsh
+        run: |
+          $result = Invoke-Pester -Path .\Tests -PassThru
+          if ($result.FailedCount -gt 0) {
+              Write-Error "$($result.FailedCount) Pester test(s) failed." -ErrorAction Stop
+          }
+      - name: Build and publish
+        env:
+          NUGET_KEY: ${{ secrets.NUGET_KEY }}
+        shell: pwsh
+        run: |
+          Publish-Module -Path .\ -NuGetApiKey $env:NUGET_KEY -Verbose
