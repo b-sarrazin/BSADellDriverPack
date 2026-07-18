@@ -10,7 +10,8 @@
 		removed once a newer one has been downloaded.
 
 		Progress is reported via Write-Progress. Use -Verbose for a detailed,
-		step-by-step trace of what the command is doing.
+		step-by-step trace of what the command is doing. Returns a summary
+		object (packages considered/matched/downloaded/failed/removed) once done.
 
 	.PARAMETER DriverCatalog
 		Driver Pack Catalog download address.
@@ -134,6 +135,10 @@ function Get-DriversPackFromDell {
 		$script:totalOperations = 0
 		$script:percentComplete = 0
 		$script:lastProgressUpdate = $null
+		$packagesMatched = 0
+		$packagesDownloaded = 0
+		$packagesAlreadyDownloaded = 0
+		$packagesFailed = 0
 
 		$models = $PSBoundParameters['Models']
 		$operatingSystems = $PSBoundParameters['OperatingSystems']
@@ -279,16 +284,19 @@ function Get-DriversPackFromDell {
 			}
 
 			# All filters are OK
+			$packagesMatched++
 
 			# Check if the package is already downloaded
 			try {
 				$packageAlreadyExists = Test-ExistingPackage -Package $package -DownloadFolder $DownloadFolder -DuplicateHandling $DuplicateHandling
 			} catch {
 				Write-Warning "Failed to check existing copies of package '$($package.name)' : $($_.Exception.Message)"
+				$packagesFailed++
 				continue
 			}
 			if ($packageAlreadyExists) {
 				Write-Verbose "Package $($package.name) already downloaded"
+				$packagesAlreadyDownloaded++
 				continue
 			}
 
@@ -309,11 +317,13 @@ function Get-DriversPackFromDell {
 				# Check file hash
 				if (Test-PackageHash -FilePath $package.path -FileHash $package.hash) {
 					Write-Verbose "Downloaded package $($package.name)"
+					$packagesDownloaded++
 				} else {
 					throw "File hash mismatch for package $($package.name)"
 				}
 			} catch {
 				Write-Warning "Failed to download package '$($package.name)' : $($_.Exception.Message)"
+				$packagesFailed++
 
 				# Remove corrupted package
 				if (Test-Path $package.path) {
@@ -330,6 +340,7 @@ function Get-DriversPackFromDell {
 		Write-Progress -Activity 'Downloading driver packs' -Completed
 	}
 	END {
+		$packagesRemoved = 0
 		$Filter = '*.CAB'
 		$LocalCABs = Get-Item $(Join-Path $DownloadFolder $Filter) -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -ExpandProperty Name
 
@@ -347,13 +358,27 @@ function Get-DriversPackFromDell {
 						try {
 							Remove-Item -Path $(Join-Path $DownloadFolder $oldCabName) -Force -ErrorAction Stop | Out-Null
 							Write-Verbose "Removed old package : $oldCabName"
+							$packagesRemoved++
 						} catch {
 							Write-Warning "Failed to remove $(Join-Path $DownloadFolder $oldCabName) : $($_.Exception.Message)"
 						}
 					}
 				}
 			}
-			Write-Progress -Activity 'Get-DriversPackFromDell' -Completed
+		}
+
+		Write-Progress -Activity 'Get-DriversPackFromDell' -Completed
+
+		# Summary report, returned to the pipeline so it can be consumed by the
+		# caller too (e.g. $result = Get-DriversPackFromDell; $result.Failed)
+		[PSCustomObject]@{
+			PackagesConsidered = $driversPacks.Count
+			PackagesMatched    = $packagesMatched
+			Downloaded         = $packagesDownloaded
+			AlreadyDownloaded  = $packagesAlreadyDownloaded
+			Failed             = $packagesFailed
+			RemovedOutdated    = $packagesRemoved
+			DownloadFolder     = $DownloadFolder
 		}
 	}
 }
