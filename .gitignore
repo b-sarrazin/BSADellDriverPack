@@ -6,3 +6,5 @@
 *.RestorePoint.ps1
 *.TempPoint.ps1
 Launch.ps1
+/DriverPackCatalog.xml
+/Drivers/

@@ -42,7 +42,7 @@ Default is "$PSScriptRoot\Drivers".
 Example : "C:\PathToScript\Drivers".
 '@)]
 	[ValidateNotNullOrEmpty()]
-	[string]$DownloadFolder = '$PSScriptRoot\Drivers\$($package.OperatingSystems)\$($package.Models)\$($package.Architectures)',
+	[string]$DownloadFolder = "$PSScriptRoot\Drivers",
 	[Parameter(HelpMessage = @'
 Folder structure to sort drivers pack into download folder.
 Leave empty to save drivers pack into the root of the download folder.
@@ -100,8 +100,7 @@ BEGIN {
 		if (-not $script:isAdmin) {
 			Write-Host 'Please run this script as administrator or use -NoSymbolicLink parameter.' -ForegroundColor Red
 			Write-Host 'Administrator privileges are required to create symbolic links.' -ForegroundColor Red
-			#Exit
-			#TODO: Uncomment the line above
+			Exit 1
 		}
 	}
 
@@ -180,14 +179,14 @@ PROCESS {
 		)
 
 		# Check if the package is already downloaded
-		$existingPackages = Get-ChildItem -Path $DownloadFolder -Filter $package.name -Recurse -ErrorAction SilentlyContinue
-		$validPackages = @()
+		$existingPackages = Get-ChildItem -Path $DownloadFolder -Filter $Package.name -Recurse -ErrorAction SilentlyContinue
+		$refPackage = $null
 
 		# Search for the first valid existing package
-		$existingPackages | ForEach-Object {
-			if (Test-PackageHash -FilePath $_.FullName -FileHash $package.hash) {
-				$refPackage = $_
-				Exit
+		foreach ($existingPackage in $existingPackages) {
+			if (Test-PackageHash -FilePath $existingPackage.FullName -FileHash $Package.hash) {
+				$refPackage = $existingPackage
+				break
 			}
 		}
 
@@ -197,33 +196,31 @@ PROCESS {
 		}
 
 		# Iterate existing packages, replace by a copy or link of the reference package
-		$existingPackages | ForEach-Object {
+		foreach ($existingPackage in $existingPackages) {
 
 			# Skip the reference package
-			if ($_.FullName -eq $refPackage.FullName) {
+			if ($existingPackage.FullName -eq $refPackage.FullName) {
 				continue
 			}
 
-
-			# Remove if package file type not match $NoSymbolicLink
-			#TODO: code code code
-
 			# Remove if corrupted
-			if (Test-PackageHash -FilePath $_.FullName -FileHash $package.hash) {
-				Write-Host "Removing corrupted package : $($_.Name)... " -NoNewline
-				Remove-Item -Path $_.FullName -Force -ErrorAction Stop | Out-Null
+			if (-not (Test-PackageHash -FilePath $existingPackage.FullName -FileHash $Package.hash)) {
+				Write-Host "Removing corrupted package : $($existingPackage.Name)... " -NoNewline
+				Remove-Item -Path $existingPackage.FullName -Force -ErrorAction Stop | Out-Null
 				Write-Host 'OK' -ForegroundColor Green
 			}
 
 			if ($NoSymbolicLink) {
 
 				# Copy the reference package
-				Copy-Item -Path $refPackage.FullName -Destination $_.FullName -Force -ErrorAction Stop
+				Copy-Item -Path $refPackage.FullName -Destination $existingPackage.FullName -Force -ErrorAction Stop
 			} else {
 				# Create a symbolic link to the reference package
-				New-Item -ItemType SymbolicLink -Path $_.FullName -Value $refPackage.FullName -Force -ErrorAction Stop
+				New-Item -ItemType SymbolicLink -Path $existingPackage.FullName -Value $refPackage.FullName -Force -ErrorAction Stop | Out-Null
 			}
 		}
+
+		return $true
 	}
 
 	function Get-Package {
@@ -242,8 +239,7 @@ PROCESS {
 		}
 
 		Start-BitsTransfer @bitsTransferProps -ErrorAction Stop
-		Check-PackageHash -package $package -ErrorAction Stop
-		return $true
+		return Test-PackageHash -FilePath $package.path -FileHash $package.hash
 	}
 
 	#endregion
@@ -395,9 +391,14 @@ PROCESS {
 
 		Write-Host "Downloading package $($package.name)... " -NoNewline
 		# Check if the package is already downloaded
-		#TODO: rename $validPackages to $existingPackage, recreate Test-ExistingPackage function and add a Copy-Package function
-		$validPackages = Test-ExistingPackage
-		if ($validPackages) {
+		try {
+			$packageAlreadyExists = Test-ExistingPackage -Package $package
+		} catch {
+			Write-Host 'KO' -ForegroundColor Red
+			Write-Host $_.Exception.Message -ForegroundColor Red
+			continue
+		}
+		if ($packageAlreadyExists) {
 			Write-Host 'Already downloaded' -ForegroundColor Green
 			continue
 		}
@@ -415,13 +416,12 @@ PROCESS {
 				New-Item -Path $bitsTransferProps.Destination -ItemType Directory -ErrorAction Stop | Out-Null
 			}
 			Start-BitsTransfer @bitsTransferProps
-			#TODO: Uncomment the line above
 
 			# Check file hash
-			if (Test-PackageHash) {
+			if (Test-PackageHash -FilePath $package.path -FileHash $package.hash) {
 				Write-Host 'OK' -ForegroundColor Green
 			} else {
-				throw "File hash mismatch : $fileHash - $($package.hash)"
+				throw "File hash mismatch for package $($package.name)"
 			}
 		} catch {
 			Write-Host 'KO' -ForegroundColor Red
@@ -443,22 +443,24 @@ PROCESS {
 }
 END {
 	$Filter = '*.CAB'
-	$LocalCABs = Get-Item $(Join-Path $DownloadFolder $Filter) | Sort-Object Name | Select-Object -ExpandProperty Name
+	$LocalCABs = Get-Item $(Join-Path $DownloadFolder $Filter) -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -ExpandProperty Name
 
 	if ($LocalCABs) {
 		foreach ($CurrentCAB in $LocalCABs) {
 
 			$Filter = $CurrentCAB.Split('-')[0] + '-' + $CurrentCAB.Split('-')[1] + '-*-*'
+			$currentCABVersion = [int]$CurrentCAB.Split('-')[2]
 
-			Get-Item $(Join-Path $DownloadFolder $Filter) | Select-Object -ExpandProperty Name |
+			Get-Item $(Join-Path $DownloadFolder $Filter) -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name |
 			ForEach-Object {
+				$oldCabName = $_
 
-				if ($CurrentCAB.Split('-')[2] -gt $_.Split('-')[2]) {
+				if ($currentCABVersion -gt [int]$oldCabName.Split('-')[2]) {
 					try {
-						Write-Host "Removing old package : $_"
-						Remove-Item -Path $(Join-Path $DownloadFolder $_) -Force -ErrorAction Stop | Out-Null
+						Write-Host "Removing old package : $oldCabName"
+						Remove-Item -Path $(Join-Path $DownloadFolder $oldCabName) -Force -ErrorAction Stop | Out-Null
 					} catch {
-						Write-Warning "Failed to remove $(Join-Path $DownloadFolder $_) : "+$Error[0]
+						Write-Warning "Failed to remove $(Join-Path $DownloadFolder $oldCabName) : $($_.Exception.Message)"
 					}
 				}
 			}
