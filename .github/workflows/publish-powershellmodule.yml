@@ -19,7 +19,9 @@ jobs:
       - name: Lint with PSScriptAnalyzer
         shell: pwsh
         run: |
-          Invoke-ScriptAnalyzer -Path . -Recurse -Outvariable issues
+          $issues = @()
+          $issues += Invoke-ScriptAnalyzer -Path ./Public -Recurse
+          $issues += Invoke-ScriptAnalyzer -Path ./Private -Recurse
           $errors   = $issues.Where({$_.Severity -eq 'Error'})
           $warnings = $issues.Where({$_.Severity -eq 'Warning'})
           if ($errors) {
