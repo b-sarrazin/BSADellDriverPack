@@ -1,6 +1,6 @@
 BeforeAll {
-	Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath '..' -AdditionalChildPath 'Private') -Filter '*.ps1' |
-		ForEach-Object { . $_.FullName }
+	$privatePath = Join-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath '..') -ChildPath 'Private'
+	Get-ChildItem -Path $privatePath -Filter '*.ps1' | ForEach-Object { . $_.FullName }
 }
 
 Describe 'Test-PackageHash' {
@@ -43,6 +43,14 @@ Describe 'Get-PackageFilterMatch' {
 	It 'handles a single scalar package value' {
 		Get-PackageFilterMatch -PackageValues 'x64' -FilterValues @('x64', 'x86') | Should -Be 'x64'
 	}
+
+	It 'returns an empty result when the package carries no value at all (e.g. WinPE packages have no model)' {
+		Get-PackageFilterMatch -PackageValues $null -FilterValues @('Latitude 7490') | Should -BeNullOrEmpty
+	}
+
+	It 'still matches everything when the filter is * even if the package has no value' {
+		Get-PackageFilterMatch -PackageValues $null -FilterValues '*' | Should -BeNullOrEmpty
+	}
 }
 
 Describe 'Test-NewerPackage' {
@@ -80,10 +88,22 @@ Describe 'Test-ExistingPackage' {
 
 	It 'returns false when no copy of the package exists yet' {
 		$missingPackage = [PSCustomObject]@{ name = 'Package-B.CAB'; hash = $packageHash }
-		Test-ExistingPackage -Package $missingPackage -DownloadFolder $downloadFolder -NoSymbolicLink | Should -BeFalse
+		Test-ExistingPackage -Package $missingPackage -DownloadFolder $downloadFolder -DuplicateHandling Copy | Should -BeFalse
 	}
 
 	It 'returns true when a valid copy already exists' {
-		Test-ExistingPackage -Package $package -DownloadFolder $downloadFolder -NoSymbolicLink | Should -BeTrue
+		Test-ExistingPackage -Package $package -DownloadFolder $downloadFolder -DuplicateHandling Copy | Should -BeTrue
+	}
+
+	It 'creates a hard link for a duplicate location by default' {
+		$subFolder = Join-Path $downloadFolder 'Sub'
+		New-Item -Path $subFolder -ItemType Directory -Force | Out-Null
+		$duplicatePath = Join-Path $subFolder 'Package-A.CAB'
+		Set-Content -Path $duplicatePath -Value 'stale duplicate content' -NoNewline
+
+		Test-ExistingPackage -Package $package -DownloadFolder $downloadFolder | Should -BeTrue
+
+		(Get-Item -Path $duplicatePath).LinkType | Should -Be 'HardLink'
+		(Get-FileHash -Algorithm MD5 -Path $duplicatePath).Hash | Should -Be $packageHash
 	}
 }

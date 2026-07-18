@@ -12,14 +12,14 @@
 	Organization:
 
 	.LINK
-	GitHub Repository: https://github.com/b-sarrazin/Get-DriversPackFromDell
+	GitHub Repository: https://github.com/b-sarrazin/BSADellDriverPack
 
 	.EXAMPLE
 	# Import the module
 	Import-Module BSADellDriverPack
 
 	# Download CAB files less than 12 months old
-	Get-DriversPackFromDell -MonthsBack 12
+	Get-BSADellDriverPack -MonthsBack 12
 #>
 
 @{
@@ -85,7 +85,7 @@
 
 	# Functions to export from this module
 	FunctionsToExport = @(
-		'Get-DriversPackFromDell'
+		'Get-BSADellDriverPack'
 	) # For performance, list functions explicitly
 
 	# Cmdlets to export from this module
@@ -114,16 +114,16 @@
 			Tags = @('Dell', 'Drivers', 'DriverPack', 'CAB', 'SCCM', 'MDT', 'Windows')
 
 			# A URL to the license for this module.
-			LicenseUri = 'https://github.com/b-sarrazin/Get-DriversPackFromDell/blob/main/LICENSE'
+			LicenseUri = 'https://github.com/b-sarrazin/BSADellDriverPack/blob/main/LICENSE'
 
 			# A URL to the main website for this project.
-			ProjectUri = 'https://github.com/b-sarrazin/Get-DriversPackFromDell'
+			ProjectUri = 'https://github.com/b-sarrazin/BSADellDriverPack'
 
 			# A URL to an icon representing this module.
 			IconUri = ''
 
 			# ReleaseNotes of this module
-			ReleaseNotes = 'https://github.com/b-sarrazin/Get-DriversPackFromDell/releases'
+			ReleaseNotes = 'https://github.com/b-sarrazin/BSADellDriverPack/releases'
 		}
 	}
 }
