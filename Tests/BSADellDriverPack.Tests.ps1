@@ -1,6 +1,6 @@
 BeforeAll {
-	Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath '..' -AdditionalChildPath 'Private') -Filter '*.ps1' |
-		ForEach-Object { . $_.FullName }
+	$privatePath = Join-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath '..') -ChildPath 'Private'
+	Get-ChildItem -Path $privatePath -Filter '*.ps1' | ForEach-Object { . $_.FullName }
 }
 
 Describe 'Test-PackageHash' {

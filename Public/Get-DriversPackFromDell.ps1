@@ -225,7 +225,7 @@ function Get-DriversPackFromDell {
 				architectures    = $_.SupportedOperatingSystems.OperatingSystem.osArch | Select-Object -Unique
 				date             = [datetime]$_.dateTime
 				uri              = $uriRoot + '/' + $_.path
-				path             = Join-Path -Path $DownloadFolder -ChildPath ($ExecutionContext.InvokeCommand.ExpandString($DriversStructure)) -AdditionalChildPath $_.Name.Display.'#cdata-section'
+				path             = Join-Path -Path (Join-Path -Path $DownloadFolder -ChildPath ($ExecutionContext.InvokeCommand.ExpandString($DriversStructure))) -ChildPath $_.Name.Display.'#cdata-section'
 				hash             = $_.hashMD5
 			}
 		}
