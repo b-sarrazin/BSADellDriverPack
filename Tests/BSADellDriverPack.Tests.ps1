@@ -43,6 +43,14 @@ Describe 'Get-PackageFilterMatch' {
 	It 'handles a single scalar package value' {
 		Get-PackageFilterMatch -PackageValues 'x64' -FilterValues @('x64', 'x86') | Should -Be 'x64'
 	}
+
+	It 'returns an empty result when the package carries no value at all (e.g. WinPE packages have no model)' {
+		Get-PackageFilterMatch -PackageValues $null -FilterValues @('Latitude 7490') | Should -BeNullOrEmpty
+	}
+
+	It 'still matches everything when the filter is * even if the package has no value' {
+		Get-PackageFilterMatch -PackageValues $null -FilterValues '*' | Should -BeNullOrEmpty
+	}
 }
 
 Describe 'Test-NewerPackage' {
