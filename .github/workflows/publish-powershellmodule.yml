@@ -10,14 +10,12 @@ jobs:
   publish-to-gallery:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install PSScriptAnalyzer and Pester modules
         shell: pwsh
         run: |
-          Install-PackageProvider -Name NuGet -Force -ErrorAction Stop
-          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module PSScriptAnalyzer -ErrorAction Stop
-          Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -ErrorAction Stop
+          Install-PSResource -Name PSScriptAnalyzer -TrustRepository -ErrorAction Stop
+          Install-PSResource -Name Pester -TrustRepository -ErrorAction Stop
       - name: Lint with PSScriptAnalyzer
         shell: pwsh
         run: |
@@ -41,4 +39,4 @@ jobs:
           NUGET_KEY: ${{ secrets.NUGET_KEY }}
         shell: pwsh
         run: |
-          Publish-Module -Path . -NuGetApiKey $env:NUGET_KEY -Verbose
+          Publish-PSResource -Path . -ApiKey $env:NUGET_KEY -Repository PSGallery -Verbose
