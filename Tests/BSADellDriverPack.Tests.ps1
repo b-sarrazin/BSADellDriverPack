@@ -80,10 +80,22 @@ Describe 'Test-ExistingPackage' {
 
 	It 'returns false when no copy of the package exists yet' {
 		$missingPackage = [PSCustomObject]@{ name = 'Package-B.CAB'; hash = $packageHash }
-		Test-ExistingPackage -Package $missingPackage -DownloadFolder $downloadFolder -NoSymbolicLink | Should -BeFalse
+		Test-ExistingPackage -Package $missingPackage -DownloadFolder $downloadFolder -DuplicateHandling Copy | Should -BeFalse
 	}
 
 	It 'returns true when a valid copy already exists' {
-		Test-ExistingPackage -Package $package -DownloadFolder $downloadFolder -NoSymbolicLink | Should -BeTrue
+		Test-ExistingPackage -Package $package -DownloadFolder $downloadFolder -DuplicateHandling Copy | Should -BeTrue
+	}
+
+	It 'creates a hard link for a duplicate location by default' {
+		$subFolder = Join-Path $downloadFolder 'Sub'
+		New-Item -Path $subFolder -ItemType Directory -Force | Out-Null
+		$duplicatePath = Join-Path $subFolder 'Package-A.CAB'
+		Set-Content -Path $duplicatePath -Value 'stale duplicate content' -NoNewline
+
+		Test-ExistingPackage -Package $package -DownloadFolder $downloadFolder | Should -BeTrue
+
+		(Get-Item -Path $duplicatePath).LinkType | Should -Be 'HardLink'
+		(Get-FileHash -Algorithm MD5 -Path $duplicatePath).Hash | Should -Be $packageHash
 	}
 }

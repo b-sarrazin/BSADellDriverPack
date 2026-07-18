@@ -14,7 +14,7 @@ It is possible to filter according to:
 * processor architecture
 * age of CAB files
 
-Packages already downloaded (and valid) are skipped, duplicate copies are created as symbolic links by default, and older versions of a package are removed once a newer one has been downloaded.
+Packages already downloaded (and valid) are skipped, duplicate copies are created as hard links by default (no admin rights needed), and older versions of a package are removed once a newer one has been downloaded.
 
 ## Getting started
 
@@ -22,7 +22,7 @@ Packages already downloaded (and valid) are skipped, duplicate copies are create
 
 * Windows 7+ / Windows Server 2008+
 * PowerShell v5.1+
-* Administrator privileges (only required for symbolic link creation, see `-NoSymbolicLink`)
+* Administrator privileges (only required when using `-DuplicateHandling SymbolicLink`; the default `HardLink` mode does not need elevation)
 
 ### Installation
 
@@ -55,6 +55,11 @@ Get-DriversPackFromDell -Models 'Latitude 7370', 'Latitude 7490'
 *Remember to take advantage of auto-completion, especially for computer models. Tab-completion values are cached under `$env:LOCALAPPDATA\BSADellDriverPack` after the first run.*
 
 By default, CAB files are downloaded to `$env:LOCALAPPDATA\BSADellDriverPack\Drivers`. Use `-DownloadFolder` to change the destination, and `-DriversStructure` to change how packages are sorted into subfolders.
+
+When the same package is needed in several places in that structure, duplicates are reconciled with `-DuplicateHandling` :
+* `HardLink` (default) : no admin rights required, but source and destination must be on the same volume.
+* `SymbolicLink` : requires admin rights.
+* `Copy` : uses more disk space, but works across volumes.
 
 ## License
 

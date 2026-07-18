@@ -6,7 +6,7 @@
 		Downloads the Dell Driver Pack Catalog, then downloads every driver pack CAB
 		file matching the requested models, operating systems and architectures.
 		Packages already downloaded (and valid) are skipped, duplicate copies are
-		created as symbolic links by default, and older versions of a package are
+		created as hard links by default, and older versions of a package are
 		removed once a newer one has been downloaded.
 
 	.PARAMETER DriverCatalog
@@ -29,9 +29,11 @@
 		Download drivers pack newer than X month.
 		Default is 0 (no time limit).
 
-	.PARAMETER NoSymbolicLink
-		Don't create symbolic link.
-		Drivers pack could be downloaded multiple times depending on your folder structure.
+	.PARAMETER DuplicateHandling
+		How to reconcile duplicate copies of the same package across the folder
+		structure. 'HardLink' (default) requires no admin rights but source and
+		destination must be on the same volume. 'SymbolicLink' requires admin
+		rights. 'Copy' uses more disk space but works across volumes.
 
 	.PARAMETER Models
 		Filter drivers pack by model. Supports tab-completion once the catalog has been downloaded at least once. Default is every model.
@@ -76,8 +78,9 @@ function Get-DriversPackFromDell {
 		[Parameter(HelpMessage = 'Download drivers pack newer than X month. Default is 0 (no time limit).')]
 		[ValidateRange(0, 240)]
 		[int]$MonthsBack = 0,
-		[Parameter(HelpMessage = "Don't create symbolic link.")]
-		[switch]$NoSymbolicLink
+		[Parameter(HelpMessage = 'How to reconcile duplicate copies of the same package. Default is HardLink.')]
+		[ValidateSet('HardLink', 'SymbolicLink', 'Copy')]
+		[string]$DuplicateHandling = 'HardLink'
 	)
 
 	DynamicParam {
@@ -108,14 +111,12 @@ function Get-DriversPackFromDell {
 	}
 
 	BEGIN {
-		# Check NoSymbolicLink parameter
-		if ($NoSymbolicLink) {
-			Write-Host 'Symbolic link creation is disabled' -ForegroundColor Yellow
-		} else {
+		Write-Host "Duplicate handling mode : $DuplicateHandling" -ForegroundColor Yellow
+		if ($DuplicateHandling -eq 'SymbolicLink') {
 			# Check if the script is running as administrator
 			$isAdmin = [bool](([System.Security.Principal.WindowsIdentity]::GetCurrent()).groups -match 'S-1-5-32-544')
 			if (-not $isAdmin) {
-				throw 'Administrator privileges are required to create symbolic links. Run this command as administrator or use the -NoSymbolicLink parameter.'
+				throw 'Administrator privileges are required to create symbolic links. Run this command as administrator, or use -DuplicateHandling HardLink (default) or Copy.'
 			}
 		}
 
@@ -293,7 +294,7 @@ function Get-DriversPackFromDell {
 			Write-Host "Downloading package $($package.name)... " -NoNewline
 			# Check if the package is already downloaded
 			try {
-				$packageAlreadyExists = Test-ExistingPackage -Package $package -DownloadFolder $DownloadFolder -NoSymbolicLink:$NoSymbolicLink
+				$packageAlreadyExists = Test-ExistingPackage -Package $package -DownloadFolder $DownloadFolder -DuplicateHandling $DuplicateHandling
 			} catch {
 				Write-Host 'KO' -ForegroundColor Red
 				Write-Host $_.Exception.Message -ForegroundColor Red
