@@ -1,31 +1,12 @@
-# Get-DriversPackFromDell
+# BSADellDriverPack
 
-A script to download CAB files from Dell
+![Static Badge](https://img.shields.io/badge/made%20with-PowerShell-blue) [![PowerShell Gallery](https://img.shields.io/powershellgallery/v/BSADellDriverPack.svg)](https://www.powershellgallery.com/packages/BSADellDriverPack) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Getting Started
-
-The following variables can be modified:
-* driverCatalog: URL to download CAB files
-* downloadFolder: destination folder for CAB files
-* monthsBack: download drivers pack newer than X month. 0 equal no time limit
-* models: filter CAB files according to the requested models
-* operatingSystems: filter CAB files according to the operating systems requested
-* architectures: filter CAB files according to the requested architectures
-
-The use of parameters is not mandatory.
-However, for more convenience, it is advisable to modify the following variables directly in the code: $downloadFolder, $monthsBack
-
-### Prerequisites
-
-* Windows 7+ / Windows Server 2003+ / Linux / MAC
-* PowerShell v1+
+BSADellDriverPack is a PowerShell module to download Dell driver packs (CAB files).
 
 ## Description
 
-The script performs the following actions:
-* download CAB files from Dell
-* skip files already downloaded
-* removes old packages when a new one is downloaded
+This module downloads the Dell Driver Pack Catalog, then downloads every driver pack CAB file matching the requested models, operating systems and architectures.
 
 It is possible to filter according to:
 * computer models
@@ -33,21 +14,52 @@ It is possible to filter according to:
 * processor architecture
 * age of CAB files
 
-## Example
+Packages already downloaded (and valid) are skipped, duplicate copies are created as symbolic links by default, and older versions of a package are removed once a newer one has been downloaded.
+
+## Getting started
+
+### Prerequisites
+
+* Windows 7+ / Windows Server 2008+
+* PowerShell v5.1+
+* Administrator privileges (only required for symbolic link creation, see `-NoSymbolicLink`)
+
+### Installation
+
+You can install this module from the PowerShell Gallery.
+
+```powershell
+Install-Module -Name BSADellDriverPack
+```
+
+### Usage
 
 Download CAB files less than 12 months old
+
 ```powershell
-.\Get-DriversPackFromDell.ps1 -monthsBack 12
+Get-DriversPackFromDell -MonthsBack 12
 ```
 
 Download CAB files less than 6 months old corresponding to x86 or x64 architectures and Windows 7 or 10 operating systems :
+
 ```powershell
-.\Get-DriversPackFromDell.ps1 -architectures x86,x64 -operatingSystems Windows10,Windows7 -monthsBack 6
+Get-DriversPackFromDell -Architectures x86, x64 -OperatingSystems Windows10, Windows7 -MonthsBack 6
 ```
 
 Download CAB files corresponding to models Latitude 7370 or Latitude 7490
+
 ```powershell
-.\Get-DriversPackFromDell.ps1 -models 'Latitude 7370','Latitude 7490'
+Get-DriversPackFromDell -Models 'Latitude 7370', 'Latitude 7490'
 ```
 
-*Remember to take advantage of auto-completion, especially for computer models*
+*Remember to take advantage of auto-completion, especially for computer models. Tab-completion values are cached under `$env:LOCALAPPDATA\BSADellDriverPack` after the first run.*
+
+By default, CAB files are downloaded to `$env:LOCALAPPDATA\BSADellDriverPack\Drivers`. Use `-DownloadFolder` to change the destination, and `-DriversStructure` to change how packages are sorted into subfolders.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
+
+## Authors
+
+* **Brice Sarrazin** - *Initial work*
