@@ -49,31 +49,31 @@
 		Filter drivers pack by architecture. Supports tab-completion once the catalog has been downloaded at least once. Default is every architecture.
 
 	.EXAMPLE
-		Get-DriversPackFromDell -MonthsBack 12
+		Get-BSADellDriverPack -MonthsBack 12
 
 		Download CAB files less than 12 months old.
 
 	.EXAMPLE
-		Get-DriversPackFromDell -Architectures x86, x64 -OperatingSystems Windows10, Windows7 -MonthsBack 6
+		Get-BSADellDriverPack -Architectures x86, x64 -OperatingSystems Windows10, Windows7 -MonthsBack 6
 
 		Download CAB files less than 6 months old corresponding to x86 or x64 architectures and Windows 7 or 10 operating systems.
 
 	.EXAMPLE
-		Get-DriversPackFromDell -Models 'Latitude 7370', 'Latitude 7490'
+		Get-BSADellDriverPack -Models 'Latitude 7370', 'Latitude 7490'
 
 		Download CAB files corresponding to models Latitude 7370 or Latitude 7490.
 
 	.EXAMPLE
-		Get-DriversPackFromDell -MonthsBack 12 -Verbose
+		Get-BSADellDriverPack -MonthsBack 12 -Verbose
 
 		Same as the first example, but with a detailed, step-by-step trace of every
 		filtering and download decision.
 
 	.NOTES
 		Created by:   Brice SARRAZIN
-		Filename:     Get-DriversPackFromDell.ps1
+		Filename:     Get-BSADellDriverPack.ps1
 #>
-function Get-DriversPackFromDell {
+function Get-BSADellDriverPack {
 	[CmdletBinding(SupportsShouldProcess = $true)]
 	param
 	(
@@ -147,7 +147,7 @@ function Get-DriversPackFromDell {
 		Write-Verbose "OperatingSystems filter : $operatingSystems"
 		Write-Verbose "Architectures filter : $architectures"
 
-		Write-Progress -Activity 'Get-DriversPackFromDell' -Status 'Checking download folder'
+		Write-Progress -Activity 'Get-BSADellDriverPack' -Status 'Checking download folder'
 		if (-not (Test-Path $DownloadFolder)) {
 			try {
 				New-Item -Path $DownloadFolder -ItemType Directory -ErrorAction Stop | Out-Null
@@ -161,7 +161,7 @@ function Get-DriversPackFromDell {
 	PROCESS {
 
 		#region Driver Pack Catalog
-		Write-Progress -Activity 'Get-DriversPackFromDell' -Status 'Downloading Driver Pack Catalog'
+		Write-Progress -Activity 'Get-BSADellDriverPack' -Status 'Downloading Driver Pack Catalog'
 		try {
 			$driverCatalogFilename = Split-Path -Path $DriverCatalog -Leaf
 			$temp = "$env:TEMP\$([guid]::NewGuid())"
@@ -172,7 +172,7 @@ function Get-DriversPackFromDell {
 			Write-Warning "Failed to download Driver Pack Catalog from '$DriverCatalog' : $($_.Exception.Message)"
 		}
 
-		Write-Progress -Activity 'Get-DriversPackFromDell' -Status 'Expanding Driver Pack Catalog'
+		Write-Progress -Activity 'Get-BSADellDriverPack' -Status 'Expanding Driver Pack Catalog'
 		try {
 			$cabCatalogTempPath = Join-Path -Path $temp -ChildPath $driverCatalogFilename
 			$oShell = New-Object -ComObject Shell.Application
@@ -184,7 +184,7 @@ function Get-DriversPackFromDell {
 			Write-Warning "Failed to expand Driver Pack Catalog : $($_.Exception.Message)"
 		}
 
-		Write-Progress -Activity 'Get-DriversPackFromDell' -Status 'Moving Driver Pack Catalog to download folder'
+		Write-Progress -Activity 'Get-BSADellDriverPack' -Status 'Moving Driver Pack Catalog to download folder'
 		try {
 			$xmlCatalogFilename = $driverCatalogFilename.Replace('.cab', '.xml')
 			$xmlCatalogTempPath = Join-Path -Path $temp -ChildPath $xmlCatalogFilename
@@ -195,7 +195,7 @@ function Get-DriversPackFromDell {
 			Write-Warning "Failed to move Driver Pack Catalog to download folder : $($_.Exception.Message)"
 		}
 
-		Write-Progress -Activity 'Get-DriversPackFromDell' -Status 'Loading Driver Pack Catalog'
+		Write-Progress -Activity 'Get-BSADellDriverPack' -Status 'Loading Driver Pack Catalog'
 		$script:catalog = [xml](Get-Content $xmlCatalogPath)
 		$uriRoot = 'http://' + $($script:catalog.DriverPackManifest | Select-Object -ExpandProperty baseLocation)
 		Write-Verbose 'Loaded Driver Pack Catalog (XML)'
@@ -355,7 +355,7 @@ function Get-DriversPackFromDell {
 		$LocalCABs = Get-Item $(Join-Path $DownloadFolder $Filter) -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -ExpandProperty Name
 
 		if ($LocalCABs) {
-			Write-Progress -Activity 'Get-DriversPackFromDell' -Status 'Removing outdated packages'
+			Write-Progress -Activity 'Get-BSADellDriverPack' -Status 'Removing outdated packages'
 			foreach ($CurrentCAB in $LocalCABs) {
 
 				$Filter = $CurrentCAB.Split('-')[0] + '-' + $CurrentCAB.Split('-')[1] + '-*-*'
@@ -377,10 +377,10 @@ function Get-DriversPackFromDell {
 			}
 		}
 
-		Write-Progress -Activity 'Get-DriversPackFromDell' -Completed
+		Write-Progress -Activity 'Get-BSADellDriverPack' -Completed
 
 		# Summary report, returned to the pipeline so it can be consumed by the
-		# caller too (e.g. $result = Get-DriversPackFromDell; $result.Failed)
+		# caller too (e.g. $result = Get-BSADellDriverPack; $result.Failed)
 		[PSCustomObject]@{
 			PackagesConsidered = $driversPacks.Count
 			PackagesMatched    = $packagesMatched

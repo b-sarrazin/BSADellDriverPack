@@ -9,7 +9,7 @@
 		(depending on DuplicateHandling), and corrupted duplicates are removed.
 
 	.PARAMETER Package
-		The package to check, as produced by Get-DriversPackFromDell.
+		The package to check, as produced by Get-BSADellDriverPack.
 
 	.PARAMETER DownloadFolder
 		Root folder to search for existing copies of the package.

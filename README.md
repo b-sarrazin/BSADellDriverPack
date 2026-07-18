@@ -37,19 +37,19 @@ Install-Module -Name BSADellDriverPack
 Download CAB files less than 12 months old
 
 ```powershell
-Get-DriversPackFromDell -MonthsBack 12
+Get-BSADellDriverPack -MonthsBack 12
 ```
 
 Download CAB files less than 6 months old corresponding to x86 or x64 architectures and Windows 7 or 10 operating systems :
 
 ```powershell
-Get-DriversPackFromDell -Architectures x86, x64 -OperatingSystems Windows10, Windows7 -MonthsBack 6
+Get-BSADellDriverPack -Architectures x86, x64 -OperatingSystems Windows10, Windows7 -MonthsBack 6
 ```
 
 Download CAB files corresponding to models Latitude 7370 or Latitude 7490
 
 ```powershell
-Get-DriversPackFromDell -Models 'Latitude 7370', 'Latitude 7490'
+Get-BSADellDriverPack -Models 'Latitude 7370', 'Latitude 7490'
 ```
 
 *Remember to take advantage of auto-completion, especially for computer models. Tab-completion values are cached under `$env:LOCALAPPDATA\BSADellDriverPack` after the first run.*

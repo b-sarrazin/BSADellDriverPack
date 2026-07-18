@@ -12,7 +12,7 @@
 		Import-Module BSADellDriverPack
 
 		# Download CAB files less than 12 months old
-		Get-DriversPackFromDell -MonthsBack 12
+		Get-BSADellDriverPack -MonthsBack 12
 
 	.NOTES
 		Author: Brice SARRAZIN
