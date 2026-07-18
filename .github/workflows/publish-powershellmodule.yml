@@ -21,7 +21,7 @@ jobs:
       - name: Lint with PSScriptAnalyzer
         shell: pwsh
         run: |
-          Invoke-ScriptAnalyzer -Path .\Public, .\Private -Recurse -Outvariable issues
+          Invoke-ScriptAnalyzer -Path . -Recurse -Outvariable issues
           $errors   = $issues.Where({$_.Severity -eq 'Error'})
           $warnings = $issues.Where({$_.Severity -eq 'Warning'})
           if ($errors) {
@@ -32,7 +32,7 @@ jobs:
       - name: Run Pester tests
         shell: pwsh
         run: |
-          $result = Invoke-Pester -Path .\Tests -PassThru
+          $result = Invoke-Pester -Path ./Tests -PassThru
           if ($result.FailedCount -gt 0) {
               Write-Error "$($result.FailedCount) Pester test(s) failed." -ErrorAction Stop
           }
@@ -41,4 +41,4 @@ jobs:
           NUGET_KEY: ${{ secrets.NUGET_KEY }}
         shell: pwsh
         run: |
-          Publish-Module -Path .\ -NuGetApiKey $env:NUGET_KEY -Verbose
+          Publish-Module -Path . -NuGetApiKey $env:NUGET_KEY -Verbose
