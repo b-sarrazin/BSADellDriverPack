@@ -29,5 +29,14 @@ function Write-MyProgress {
 		$Status = "Step $script:currentOperation / $script:totalOperations"
 	}
 
+	# Write-Progress has real per-call overhead; with catalogs of 1000+ packages,
+	# refreshing it for every single one measurably slows down filtering. Throttle
+	# to a few updates per second, always showing the first and the 100% update.
+	$now = Get-Date
+	if ($script:percentComplete -lt 100 -and $script:lastProgressUpdate -and ($now - $script:lastProgressUpdate).TotalMilliseconds -lt 100) {
+		return
+	}
+	$script:lastProgressUpdate = $now
+
 	Write-Progress -Activity $Activity -Status $Status -PercentComplete $script:percentComplete
 }

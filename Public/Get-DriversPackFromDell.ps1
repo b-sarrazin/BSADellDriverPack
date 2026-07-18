@@ -133,6 +133,7 @@ function Get-DriversPackFromDell {
 		$script:currentOperation = 0
 		$script:totalOperations = 0
 		$script:percentComplete = 0
+		$script:lastProgressUpdate = $null
 
 		$models = $PSBoundParameters['Models']
 		$operatingSystems = $PSBoundParameters['OperatingSystems']
@@ -198,14 +199,12 @@ function Get-DriversPackFromDell {
 
 		#region Create/update attibute set for variables models, operatingSystems, architectures
 		Write-MyProgress -Activity 'Updating models, operating systems and architectures variables'
-		[array]$supportedModels = @()
-		[array]$supportedOS = @()
-		[array]$supportedArch = @()
-		$script:catalog.DriverPackManifest.DriverPackage | ForEach-Object {
-			$supportedModels += $_.SupportedSystems.Brand.Model | Select-Object -ExpandProperty name
-			$supportedOS += $_.SupportedOperatingSystems.OperatingSystem | Select-Object -ExpandProperty osCode
-			$supportedArch += $_.SupportedOperatingSystems.OperatingSystem | Select-Object -ExpandProperty osArch
-		}
+		# Member access on a collection flattens the property across every element,
+		# so this collects every model/OS/architecture in one pass, without the
+		# O(n^2) cost of growing an array with += inside a loop.
+		[array]$supportedModels = @($script:catalog.DriverPackManifest.DriverPackage.SupportedSystems.Brand.Model.name)
+		[array]$supportedOS = @($script:catalog.DriverPackManifest.DriverPackage.SupportedOperatingSystems.OperatingSystem.osCode)
+		[array]$supportedArch = @($script:catalog.DriverPackManifest.DriverPackage.SupportedOperatingSystems.OperatingSystem.osArch)
 		$supportedModels | Select-Object -Unique | Sort-Object | Set-Content (Join-Path -Path $script:BSADellDriverPackDataPath -ChildPath 'Models.txt') -Force
 		$supportedOS | Select-Object -Unique | Sort-Object | Set-Content (Join-Path -Path $script:BSADellDriverPackDataPath -ChildPath 'OperatingSystems.txt') -Force
 		$supportedArch | Select-Object -Unique | Sort-Object | Set-Content (Join-Path -Path $script:BSADellDriverPackDataPath -ChildPath 'Architectures.txt') -Force
@@ -215,10 +214,10 @@ function Get-DriversPackFromDell {
 
 		# Create drivers pack list
 		Write-MyProgress -Activity 'Creating drivers packs list'
-		$driversPacks = @()
-		$script:catalog.DriverPackManifest.DriverPackage | ForEach-Object {
-
-			$driversPacks += New-Object PSObject -Property @{
+		# Assigning the pipeline output directly (instead of += inside the loop)
+		# avoids reallocating and copying the whole array on every package.
+		$driversPacks = @($script:catalog.DriverPackManifest.DriverPackage | ForEach-Object {
+			New-Object PSObject -Property @{
 				name             = $_.Name.Display.'#cdata-section'
 				format           = $_.format
 				version          = $_.dellVersion
@@ -230,7 +229,7 @@ function Get-DriversPackFromDell {
 				path             = Join-Path -Path (Join-Path -Path $DownloadFolder -ChildPath ($ExecutionContext.InvokeCommand.ExpandString($DriversStructure))) -ChildPath $_.Name.Display.'#cdata-section'
 				hash             = $_.hashMD5
 			}
-		}
+		})
 		Write-Verbose "Created drivers packs list ($($driversPacks.Count) packages)"
 
 		# Filter drivers pack by date
@@ -253,7 +252,6 @@ function Get-DriversPackFromDell {
 			if ($models -ne '*') {
 				$modelsFound = Get-PackageFilterMatch -PackageValues $package.models -FilterValues $models
 				if (!$modelsFound) {
-					$driversPacks = $driversPacks | Where-Object { $_.name -ne $package.name }
 					Write-Verbose " - Models not matched : $($package.models)"
 					continue
 				}
@@ -264,7 +262,6 @@ function Get-DriversPackFromDell {
 			if ($operatingSystems -ne '*') {
 				$operatingSystemsFound = Get-PackageFilterMatch -PackageValues $package.operatingSystems -FilterValues $operatingSystems
 				if (!$operatingSystemsFound) {
-					$driversPacks = $driversPacks | Where-Object { $_.name -ne $package.name }
 					Write-Verbose " - Operating systems not matched : $($package.operatingSystems)"
 					continue
 				}
@@ -275,7 +272,6 @@ function Get-DriversPackFromDell {
 			if ($architectures -ne '*') {
 				$architecturesFound = Get-PackageFilterMatch -PackageValues $package.architectures -FilterValues $architectures
 				if (!$architecturesFound) {
-					$driversPacks = $driversPacks | Where-Object { $_.name -ne $package.name }
 					Write-Verbose " - Architectures not matched : $($package.architectures)"
 					continue
 				}
