@@ -207,13 +207,13 @@ function Get-DriversPackFromDell {
 		# Member access on a collection flattens the property across every element,
 		# so this collects every model/OS/architecture in one pass, without the
 		# O(n^2) cost of growing an array with += inside a loop.
-		[array]$supportedModels = @($script:catalog.DriverPackManifest.DriverPackage.SupportedSystems.Brand.Model.name)
-		[array]$supportedOS = @($script:catalog.DriverPackManifest.DriverPackage.SupportedOperatingSystems.OperatingSystem.osCode)
-		[array]$supportedArch = @($script:catalog.DriverPackManifest.DriverPackage.SupportedOperatingSystems.OperatingSystem.osArch)
-		$supportedModels | Select-Object -Unique | Sort-Object | Set-Content (Join-Path -Path $script:BSADellDriverPackDataPath -ChildPath 'Models.txt') -Force
-		$supportedOS | Select-Object -Unique | Sort-Object | Set-Content (Join-Path -Path $script:BSADellDriverPackDataPath -ChildPath 'OperatingSystems.txt') -Force
-		$supportedArch | Select-Object -Unique | Sort-Object | Set-Content (Join-Path -Path $script:BSADellDriverPackDataPath -ChildPath 'Architectures.txt') -Force
-		Write-Verbose "Updated models, operating systems and architectures variables ($($supportedModels.Count) models, $($supportedOS.Count) operating systems, $($supportedArch.Count) architectures)"
+		[array]$supportedModels = @($script:catalog.DriverPackManifest.DriverPackage.SupportedSystems.Brand.Model.name) | Select-Object -Unique | Sort-Object
+		[array]$supportedOS = @($script:catalog.DriverPackManifest.DriverPackage.SupportedOperatingSystems.OperatingSystem.osCode) | Select-Object -Unique | Sort-Object
+		[array]$supportedArch = @($script:catalog.DriverPackManifest.DriverPackage.SupportedOperatingSystems.OperatingSystem.osArch) | Select-Object -Unique | Sort-Object
+		$supportedModels | Set-Content (Join-Path -Path $script:BSADellDriverPackDataPath -ChildPath 'Models.txt') -Force
+		$supportedOS | Set-Content (Join-Path -Path $script:BSADellDriverPackDataPath -ChildPath 'OperatingSystems.txt') -Force
+		$supportedArch | Set-Content (Join-Path -Path $script:BSADellDriverPackDataPath -ChildPath 'Architectures.txt') -Force
+		Write-Verbose "Updated models, operating systems and architectures variables ($($supportedModels.Count) distinct models, $($supportedOS.Count) distinct operating systems, $($supportedArch.Count) distinct architectures)"
 		#endregion
 
 
