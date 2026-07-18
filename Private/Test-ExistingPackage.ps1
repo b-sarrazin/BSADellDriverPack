@@ -60,9 +60,8 @@ function Test-ExistingPackage {
 
 		# Remove if corrupted
 		if (-not (Test-PackageHash -FilePath $existingPackage.FullName -FileHash $Package.hash)) {
-			Write-Host "Removing corrupted package : $($existingPackage.Name)... " -NoNewline
 			Remove-Item -Path $existingPackage.FullName -Force -ErrorAction Stop | Out-Null
-			Write-Host 'OK' -ForegroundColor Green
+			Write-Verbose "Removed corrupted package : $($existingPackage.Name)"
 		}
 
 		if ($DuplicateHandling -eq 'Copy') {
@@ -78,6 +77,7 @@ function Test-ExistingPackage {
 			# Create a hard link or a symbolic link to the reference package
 			New-Item -ItemType $DuplicateHandling -Path $existingPackage.FullName -Value $refPackage.FullName -ErrorAction Stop | Out-Null
 		}
+		Write-Verbose "$DuplicateHandling created for $($existingPackage.FullName)"
 	}
 
 	return $true
