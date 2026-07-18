@@ -222,8 +222,10 @@ function Get-DriversPackFromDell {
 		# Assigning the pipeline output directly (instead of += inside the loop)
 		# avoids reallocating and copying the whole array on every package.
 		$driversPacks = @($script:catalog.DriverPackManifest.DriverPackage | ForEach-Object {
-			New-Object PSObject -Property @{
-				name             = $_.Name.Display.'#cdata-section'
+			$packageName = $_.Name.Display.'#cdata-section'
+
+			$package = New-Object PSObject -Property @{
+				name             = $packageName
 				format           = $_.format
 				version          = $_.dellVersion
 				models           = $_.SupportedSystems.Brand.Model.name | Select-Object -Unique
@@ -231,9 +233,17 @@ function Get-DriversPackFromDell {
 				architectures    = $_.SupportedOperatingSystems.OperatingSystem.osArch | Select-Object -Unique
 				date             = [datetime]$_.dateTime
 				uri              = $uriRoot + '/' + $_.path
-				path             = Join-Path -Path (Join-Path -Path $DownloadFolder -ChildPath ($ExecutionContext.InvokeCommand.ExpandString($DriversStructure))) -ChildPath $_.Name.Display.'#cdata-section'
 				hash             = $_.hashMD5
 			}
+
+			# DriversStructure is expanded only now that $package is fully populated,
+			# since its default value (and documented syntax) references
+			# $package.OperatingSystems / .Models / .Architectures. Expanding it
+			# earlier, while $package didn't exist yet, silently produced an empty
+			# subfolder structure.
+			$package | Add-Member -MemberType NoteProperty -Name 'path' -Value (Join-Path -Path (Join-Path -Path $DownloadFolder -ChildPath ($ExecutionContext.InvokeCommand.ExpandString($DriversStructure))) -ChildPath $packageName)
+
+			$package
 		})
 		Write-Verbose "Created drivers packs list ($($driversPacks.Count) packages)"
 
