@@ -9,6 +9,8 @@ on:
 jobs:
   publish-to-gallery:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
       - name: Install PSScriptAnalyzer and Pester modules
