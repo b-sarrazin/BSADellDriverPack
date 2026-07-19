@@ -27,7 +27,7 @@
 	RootModule = 'BSADellDriverPack.psm1'
 
 	# Version number of this module.
-	ModuleVersion = '1.0.0'
+	ModuleVersion = '1.0.1'
 
 	# ID used to uniquely identify this module
 	GUID = 'b5d868a7-b06c-4e1b-97f9-87a9e66b0856'
