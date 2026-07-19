@@ -36,9 +36,20 @@ jobs:
           if ($result.FailedCount -gt 0) {
               Write-Error "$($result.FailedCount) Pester test(s) failed." -ErrorAction Stop
           }
+      - name: Stage module for publish
+        shell: pwsh
+        run: |
+          # Publish-PSResource packs everything under -Path verbatim (FileList in
+          # the manifest is not a filter it enforces). Publishing the checked-out
+          # repo root as-is would ship .git, .github, .gitignore, etc. Stage only
+          # the actual module content in a clean folder instead.
+          $stagingPath = './_staged/BSADellDriverPack'
+          New-Item -Path $stagingPath -ItemType Directory -Force | Out-Null
+          Copy-Item -Path './BSADellDriverPack.psd1', './BSADellDriverPack.psm1', './LICENSE', './README.md' -Destination $stagingPath
+          Copy-Item -Path './Public', './Private' -Destination $stagingPath -Recurse
       - name: Build and publish
         env:
           NUGET_KEY: ${{ secrets.NUGET_KEY }}
         shell: pwsh
         run: |
-          Publish-PSResource -Path . -ApiKey $env:NUGET_KEY -Repository PSGallery -Verbose
+          Publish-PSResource -Path './_staged/BSADellDriverPack' -ApiKey $env:NUGET_KEY -Repository PSGallery -Verbose
